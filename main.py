@@ -72,6 +72,7 @@ class App:
     def game(self):
         colors = ["BLUE", "RED", "PURPLE", "YELLOW", "ORANGE", "GREEN"]
         font_big = pg.font.SysFont('comicsans', 80, True)
+        font_small = pg.font.SysFont('comicsans', 25, True)
         board = [[np.random.randint(0, 4) for _ in range(6)] for _ in range(8)]
         boxes = [[Box([100 * i, 500 - 100 * j], colors[board[i][j]], j) for j in range(len(board[i]))] for i in range(len(board))]
         run = True
@@ -94,6 +95,9 @@ class App:
                 pg.draw.rect(self.win, "WHITE", [375 - max([text.get_width(), text2.get_width()]) // 2, 150, max([text.get_width(), text2.get_width()]) + 50, 175 + text2.get_height()], 5, border_radius=7)
                 self.win.blit(text, (400 - text.get_width()//2, 200))
                 self.win.blit(text2, (400 - text2.get_width() // 2, 275))
+            else:
+                text = font_small.render(f"Score: {int(score)}", True, [255, 255, 255])
+                self.win.blit(text, (self.screenWidth - text.get_width() - 10, 10))
             pg.display.update()
             for event in pg.event.get():
                 if event.type == pg.MOUSEBUTTONUP and not falling:
