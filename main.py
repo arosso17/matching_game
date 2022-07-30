@@ -2,6 +2,64 @@ import os
 import pygame as pg
 import numpy as np
 
+class TextField:
+    def __init__(self, pos, text, font, color, size, defualt):
+        self.pos = pos
+        self.color = color
+        self.font = font
+        self.size = size
+        self.text = font.render(text, True, self.color)
+        self.defualt = defualt
+        self.value = ''
+        self.active = False
+        self.rect = pg.Rect([self.pos[0] + 10 + self.text.get_width() // 2, self.pos[1] - 10 - self.text.get_height() // 2, self.size, self.text.get_height() + 20])
+
+    def click(self, pos):
+        if self.rect.collidepoint(pos):
+            self.active = True
+        else:
+            self.active = False
+
+    def draw(self, win):
+        if self.active:
+            pg.draw.rect(win, "GREY", self.rect)
+        pg.draw.rect(win, self.color, self.rect, 3)
+        val_text = self.font.render(self.value, True, self.color)
+        win.blit(val_text, [self.rect[0] + 10, self.rect[1] + 10])
+        win.blit(self.text, [self.pos[0] - self.text.get_width() // 2, self.pos[1] - self.text.get_height() // 2])
+
+    def get(self):
+        if self.value != '':
+            return self.value
+        return self.defualt
+
+class Button:
+    def __init__(self, pos, text, font, color, bg_color, function=""):
+        self.function = function
+        self.pos = pos
+        self.font = font
+        self.color = color
+        self.bg_color = bg_color
+        self.text = font.render(text, True, self.color)
+        self.hover = False
+        self.rect = pg.Rect([self.pos[0] - 10 - self.text.get_width() // 2, self.pos[1] - 10 - self.text.get_height() // 2, self.text.get_width() + 20, self.text.get_height() + 20])
+
+    def draw(self, win):
+        pg.draw.rect(win, self.bg_color, self.rect, 3)
+        if self.hover:
+            pg.draw.rect(win, self.bg_color, self.rect)
+        win.blit(self.text, [self.pos[0] - self.text.get_width() // 2, self.pos[1] - self.text.get_height() // 2])
+
+    def check(self, pos):
+        if self.rect.collidepoint(pos):
+            self.hover = True
+        else:
+            self.hover = False
+
+    def go(self):
+        if self.hover:
+            return self.function
+
 class Box:
     def __init__(self, pos, color, size, off=1):
         self.pos = [pos[0], - size[1] * off]
@@ -92,11 +150,49 @@ class App:
                             group.append(nay)
         return group
 
-    def game(self):
+    def menu(self):
+        font_big = pg.font.SysFont('comicsans', 80, True)
+        font_small = pg.font.SysFont('comicsans', 25, True)
+        menu_words = font_big.render("Main Menu", True, "BLACK")
+        play_button = Button([self.screenWidth // 2, self.screenHeight // 2], "Play", font_big, "BLACK", "RED", "self.game")
+        width = TextField([150, 500], "Board x:", font_big, "BLACK", 90, 8)
+        height = TextField([550, 500], "Board y:", font_big, "BLACK", 90, 8)
+        run = True
+        while run:
+            self.win.fill("WHITE")
+            self.win.blit(menu_words, [self.screenWidth // 2 - menu_words.get_width() // 2, 50])
+            play_button.draw(self.win)
+            width.draw(self.win)
+            height.draw(self.win)
+            pg.display.update()
+            pos = pg.mouse.get_pos()
+            play_button.check(pos)
+            for event in pg.event.get():
+                if event.type == pg.KEYUP:
+                    if width.active:
+                        if 48 <= event.key < 58:
+                            width.value += str(event.key - 48)
+                        if event.key == 8:
+                            width.value = width.value[:-1]
+                    if height.active:
+                        if 48 <= event.key < 58:
+                            height.value += str(event.key - 48)
+                        if event.key == 8:
+                            height.value = height.value[:-1]
+                if event.type == pg.MOUSEBUTTONUP:
+                    if event.button == 1:
+                        width.click(pos)
+                        height.click(pos)
+                        if play_button.hover:
+                            eval(play_button.go() + f"({width.get()}, {height.get()})")
+                if event.type == pg.QUIT:
+                    run = False
+
+    def game(self, x, y):
         colors = ["BLUE", "RED", [30, 190, 30], "YELLOW", "ORANGE", "PURPLE"]
         font_big = pg.font.SysFont('comicsans', 80, True)
         font_small = pg.font.SysFont('comicsans', 25, True)
-        board_size = [10, 10]
+        board_size = [x, y]
         size = [int(self.screenWidth / board_size[0]), int(self.screenHeight / board_size[1])]
         board = [[np.random.randint(0, 4) for _ in range(board_size[1])] for _ in range(board_size[0])]
         boxes = [[Box([size[0] * i, (self.screenHeight - size[1]) - (size[1] * j)], colors[board[i][j]], size, j) for j in range(len(board[i]))] for i in range(len(board))]
@@ -216,6 +312,11 @@ class App:
                             lose = False
                             break
                         for p in group:
+                            if type(boxes[p[0]][p[1]]) == PowerUp:
+                                print(boxes[p[0]][p[1]].power)
+                                if boxes[p[0]][p[1]].power == 2 or boxes[p[0]][p[1]].power == 3:
+                                    lose = False
+                                    break
                             all.remove([[p[0], p[1]], board[p[0]][p[1]]])
                     if lose:
                         print("YOU LOSE")
@@ -232,5 +333,5 @@ class App:
 
 if __name__ == "__main__":
     app = App()
-    app.game()
+    app.menu()
 
