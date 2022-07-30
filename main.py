@@ -20,6 +20,15 @@ class Box:
     def draw(self, win):
         pg.draw.rect(win, self.color, [self.pos[0] + 2, self.pos[1] + 2, self.size[0] - 4, self.size[1] - 4], border_radius=5)
 
+class PowerUp(Box):
+    def __init__(self, power, pos, color, size, off=1):
+        super().__init__(pos, color, size, off)
+        self.pos = pos
+        self.power = power
+
+    def draw(self, win):
+        pg.draw.rect(win, self.color, [self.pos[0] + 2, self.pos[1] + 2, self.size[0] - 4, self.size[1] - 4], border_radius=5)
+        pg.draw.circle(win, "BLACK", [self.pos[0] + 2 + (self.size[0] - 4) // 2, self.pos[1] + 2 + (self.size[1] - 4) // 2], (min(self.size) - 4) * 0.25)
 
 class App:
     def __init__(self):
@@ -109,9 +118,26 @@ class App:
                         pos = pg.mouse.get_pos()
                         pos = [pos[0] // size[0], (board_size[1] - 1) - pos[1] // size[1]]
                         kills = self.check(board, pos, board[pos[0]][pos[1]])
+                        pup = False
+                        for kill in kills:
+                            if type(boxes[kill[0]][kill[1]]) == PowerUp:
+                                pup = True
+                                if boxes[kill[0]][kill[1]].power == 0:
+                                    adds = [[i, j] for i in range(kill[0] - 1, kill[0] + 2) for j in range(kill[1] - 1, kill[1] + 2) if 0 <= i < board_size[0] and 0 <= j < board_size[1]]
+                                    for add in adds:
+                                        if add not in kills:
+                                            kills.append(add)
                         if len(kills) > 2:
                             falling = True
                             score += len(kills) ** 1.25 // 1
+                            if len(kills) > 4 and not pup:
+                                lowest = 0
+                                for i in range(len(kills)):
+                                    if kills[i][1] < kills[lowest][1]:
+                                        lowest = i
+                                cur = boxes[kills[lowest][0]][kills[lowest][1]]
+                                boxes[kills[lowest][0]][kills[lowest][1]] = PowerUp(0, cur.pos, cur.color, cur.size)
+                                kills.pop(lowest)
                             print(score)
                             for kill in kills:
                                 board[kill[0]][kill[1]] = None
@@ -156,8 +182,9 @@ class App:
                         print("YOU LOSE")
                 if event.type == pg.KEYUP:
                     if event.key == pg.K_r:
-                        board = [[np.random.randint(0, 4) for _ in range(board_size[0])] for _ in range(board_size[1])]
-                        boxes = [[Box([size[0] * i, (self.screenHeight - size[1]) - (size[1] * j)], colors[board[i][j]],size, j) for j in range(len(board[i]))] for i in range(len(board))]
+                        board = [[np.random.randint(0, 4) for _ in range(board_size[1])] for _ in range(board_size[0])]
+                        boxes = [[Box([size[0] * i, (self.screenHeight - size[1]) - (size[1] * j)], colors[board[i][j]],
+                                      size, j) for j in range(len(board[i]))] for i in range(len(board))]
                         score = 0
                         lose = False
                 elif event.type == pg.QUIT:
