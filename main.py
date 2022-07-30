@@ -28,7 +28,19 @@ class PowerUp(Box):
 
     def draw(self, win):
         pg.draw.rect(win, self.color, [self.pos[0] + 2, self.pos[1] + 2, self.size[0] - 4, self.size[1] - 4], border_radius=5)
-        pg.draw.circle(win, "BLACK", [self.pos[0] + 2 + (self.size[0] - 4) // 2, self.pos[1] + 2 + (self.size[1] - 4) // 2], (min(self.size) - 4) * 0.25)
+        if self.power == 1:
+            pg.draw.rect(win, "BLACK", [self.pos[0] + 2 + (self.size[0] - 4) // 4, self.pos[1] + 2 + (self.size[1] - 4) // 4, (self.size[0] - 4) // 2, (self.size[1] - 4) // 2], 3, border_radius=5)
+        elif self.power == 0:
+            pg.draw.circle(win, "BLACK", [self.pos[0] + 2 + (self.size[0] - 4) // 2, self.pos[1] + 2 + (self.size[1] - 4) // 2], (min(self.size) - 4) * 0.25)
+        elif self.power == 2:
+            pg.draw.rect(win, "WHITE", [self.pos[0] + 2, self.pos[1] + 2, self.size[0] - 4, self.size[1] - 4], 3,
+                         border_radius=5)
+            pg.draw.line(win, "BLACK", [self.pos[0] + 2 + (self.size[0] - 4) // 4, self.pos[1] + 2 + (self.size[1] - 4) // 2], [self.pos[0] + 2 + (self.size[0] - 4) // 4 * 3, self.pos[1] + 2 + (self.size[1] - 4) // 2], 5)
+        elif self.power == 3:
+            pg.draw.rect(win, "WHITE", [self.pos[0] + 2, self.pos[1] + 2, self.size[0] - 4, self.size[1] - 4], 3,
+                         border_radius=5)
+            pg.draw.line(win, "BLACK", [self.pos[0] + 2 + (self.size[0] - 4) // 2, self.pos[1] + 2 + (self.size[1] - 4) // 4], [self.pos[0] + 2 + (self.size[0] - 4) // 2, self.pos[1] + 2 + (self.size[1] - 4) // 4 * 3], 5)
+
 
 class App:
     def __init__(self):
@@ -84,7 +96,7 @@ class App:
         colors = ["BLUE", "RED", [30, 190, 30], "YELLOW", "ORANGE", "PURPLE"]
         font_big = pg.font.SysFont('comicsans', 80, True)
         font_small = pg.font.SysFont('comicsans', 25, True)
-        board_size = [8, 6]
+        board_size = [10, 10]
         size = [int(self.screenWidth / board_size[0]), int(self.screenHeight / board_size[1])]
         board = [[np.random.randint(0, 4) for _ in range(board_size[1])] for _ in range(board_size[0])]
         boxes = [[Box([size[0] * i, (self.screenHeight - size[1]) - (size[1] * j)], colors[board[i][j]], size, j) for j in range(len(board[i]))] for i in range(len(board))]
@@ -119,18 +131,45 @@ class App:
                         pos = [pos[0] // size[0], (board_size[1] - 1) - pos[1] // size[1]]
                         kills = self.check(board, pos, board[pos[0]][pos[1]])
                         pup = False
+                        adds = []
                         for kill in kills:
                             if type(boxes[kill[0]][kill[1]]) == PowerUp:
                                 pup = True
-                                if boxes[kill[0]][kill[1]].power == 0:
-                                    adds = [[i, j] for i in range(kill[0] - 1, kill[0] + 2) for j in range(kill[1] - 1, kill[1] + 2) if 0 <= i < board_size[0] and 0 <= j < board_size[1]]
-                                    for add in adds:
-                                        if add not in kills:
-                                            kills.append(add)
+                                if boxes[kill[0]][kill[1]].power == 0 and len(kills) > 2:
+                                    adds = [[i, j] for i in range(kill[0] - 1, kill[0] + 2) for j in range(kill[1] - 1, kill[1] + 2) if 0 <= i < board_size[0] and 0 <= j < board_size[1] and [i, j] not in kills]
+                                if boxes[kill[0]][kill[1]].power == 1 and len(kills) > 2:
+                                    adds = []
+                                    for i in range(len(board)):
+                                        for j in range(len(board[i])):
+                                            if board[i][j] == board[kill[0]][kill[1]]:
+                                                if [i, j] not in kills:
+                                                    adds.append([i, j])
+                                if boxes[kill[0]][kill[1]].power == 2:
+                                    adds = [[i, kill[1]] for i in range(len(boxes)) if [i, kill[1]] not in kills]
+                                if boxes[kill[0]][kill[1]].power == 3:
+                                    adds = [[kill[0], i] for i in range(len(boxes[0])) if [kill[0], i] not in kills]
+                                if len(adds) > 0:
+                                    kills += adds
                         if len(kills) > 2:
                             falling = True
                             score += len(kills) ** 1.25 // 1
-                            if len(kills) > 4 and not pup:
+                            if len(kills) > 6 and not pup:
+                                lowest = 0
+                                for i in range(len(kills)):
+                                    if kills[i][1] < kills[lowest][1]:
+                                        lowest = i
+                                cur = boxes[kills[lowest][0]][kills[lowest][1]]
+                                boxes[kills[lowest][0]][kills[lowest][1]] = PowerUp(1, cur.pos, cur.color, cur.size)
+                                kills.pop(lowest)
+                            elif len(kills) > 5 and not pup:
+                                lowest = 0
+                                for i in range(len(kills)):
+                                    if kills[i][1] < kills[lowest][1]:
+                                        lowest = i
+                                cur = boxes[kills[lowest][0]][kills[lowest][1]]
+                                boxes[kills[lowest][0]][kills[lowest][1]] = PowerUp(np.random.randint(2, 4), cur.pos, cur.color, cur.size)
+                                kills.pop(lowest)
+                            elif len(kills) > 4 and not pup:
                                 lowest = 0
                                 for i in range(len(kills)):
                                     if kills[i][1] < kills[lowest][1]:
